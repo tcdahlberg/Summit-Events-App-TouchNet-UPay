@@ -4,8 +4,16 @@ project:
     package:
         name: Summit-Events-App-Touchnet-UPay
         api_version: '63.0'
+    dependencies:
+        - github: 'https://github.com/SFDO-Community/Summit-Events-App'
     git:
+        default_branch: 'main'
     source_format: sfdx
+
+sources:
+    sea:
+        github: 'https://github.com/SFDO-Community/Summit-Events-App'
+        branch: 'master'
 
 tasks:
     robot:
@@ -22,3 +30,98 @@ tasks:
     run_tests:
         options:
             required_org_code_coverage_percent: 75
+
+#    add_template_picklist_items:
+#        description: "Adds more picklist items to the template list for selection"
+#        class_path: cumulusci.tasks.metadata_etl.picklists.AddPicklistEntries
+#        group: "SEA: Metadata"
+#        ui_options:
+#            add_relationship_type_values:
+#                name: Add Relationship Type Picklist Values
+#        options:
+#            picklists: summit__Summit_Events__c.summit__Template__c
+#            entries:
+#                - fullName: "CrownTemplate"
+#                  label: "Crown Template"
+#                - fullName: "GeneralSLDS2"
+#                  label: "General SLDS 2"
+#                - fullName: "highereddreamin"
+#                  label: "Higher Ed Dreamin"
+#                - fullName: "OpusStThomas2023"
+#                  label: "Opus St Thomas 2023"
+#                - fullName: "stthomas2021SEA"
+#                  label: "St Thomas 2021 SEA"
+#                - fullName: "stthomas2021SEABookings"
+#                  label: "St Thomas 2021 SEA Bookings"
+#                - fullName: "UndergradStThomas2023"
+#                  label: "Undergrad St Thomas 2023"
+#                - fullName: "UndergradStThomas2023Bookings"
+#                  label: "Undergrad St Thomas 2023 Bookings"
+#                - fullName: "StThomasSEA2025"
+#                  label: "St Thomas SEA 2025"
+
+    deploy_guest_permission_set:
+        description: Give System Admins Event Admin Permission Set
+        class_path: cumulusci.tasks.apex.anon.AnonymousApexTask
+        options:
+            namespace_inject: $project_config.project__package__namespace
+            apex: >
+                String siteName = 'Summit_Events';
+                
+                Site site = [
+                        SELECT GuestUserId
+                        FROM Site
+                        WHERE Name = :siteName
+                ];
+                
+                List<PermissionSet> eventPermissionSets;
+                eventPermissionSets = [SELECT Name, Id FROM PermissionSet WHERE Name = 'Summit_Events_Registrant_Custom'];
+                
+                List<PermissionSetAssignment> permissionSetList = new List<PermissionSetAssignment>();
+                if (!eventPermissionSets.isEmpty()) {
+                        permissionSetList.add(new PermissionSetAssignment(PermissionSetId = eventPermissionSets[0].Id, AssigneeId = site.GuestUserId));
+                }
+                if (!permissionSetList.isEmpty()) {
+                    upsert permissionSetList;
+                }
+
+    check_namespace_box:
+        description: "Check the namespace box in the org"
+        class_path: cumulusci.tasks.apex.anon.AnonymousApexTask
+        options:
+            apex: >
+                summit__Summit_Events_Settings__c eventSettings = summit__Summit_Events_Settings__c.getOrgDefaults();
+                eventSettings.summit__Managed_Package__c = true;
+                upsert eventSettings;     
+
+flows:
+    config_dev:
+        steps:
+            1.2:
+                task: sea:deploy_pre
+            1.3:
+                task: sea:role_to_userUser
+            3:
+                task: sea:create_community
+            4:
+                task: sea:create_community_network
+            5:
+                task: sea:create_community_experience_cloud_bundle
+            6:
+                task: sea:deploy_site_config
+            7:
+                task: sea:create_community_publish
+            9:
+                task: sea:deploy_admin_permission_set
+            10:
+                task: sea:deploy_site_settings
+            11:
+                task: sea:deploy_guest_permission_set
+            12:
+                task: deploy_guest_permission_set
+            13:
+                task: add_template_picklist_items
+            14:
+                task: check_namespace_box
+            15:
+                task: sea:load_sample_data
