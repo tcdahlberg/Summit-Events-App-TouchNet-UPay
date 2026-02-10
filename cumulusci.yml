@@ -1,0 +1,24 @@
+minimum_cumulusci_version: '4.8.1'
+project:
+    name: Summit-Events-App-Touchnet-UPay
+    package:
+        name: Summit-Events-App-Touchnet-UPay
+        api_version: '63.0'
+    git:
+    source_format: sfdx
+
+tasks:
+    robot:
+        options:
+            suites: robot/Summit-Events-App-Touchnet-UPay/tests
+            options:
+                outputdir: robot/Summit-Events-App-Touchnet-UPay/results
+
+    robot_testdoc:
+        options:
+            path: robot/Summit-Events-App-Touchnet-UPay/tests
+            output: robot/Summit-Events-App-Touchnet-UPay/doc/Summit-Events-App-Touchnet-UPay_tests.html
+
+    run_tests:
+        options:
+            required_org_code_coverage_percent: 75
