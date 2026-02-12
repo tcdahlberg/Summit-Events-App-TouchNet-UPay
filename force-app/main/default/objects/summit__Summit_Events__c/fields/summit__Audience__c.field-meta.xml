@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>summit__Audience__c</fullName>
+    <deprecated>false</deprecated>
+    <description>Choose the audience that this event is targeted.</description>
+    <inlineHelpText>Choose the audience that this event is targeted.</inlineHelpText>
+    <label>Audience</label>
+    <required>false</required>
+    <trackHistory>false</trackHistory>
+    <trackTrending>false</trackTrending>
+    <type>MultiselectPicklist</type>
+    <valueSet>
+        <valueSetDefinition>
+            <sorted>false</sorted>
+            <value>
+                <fullName>No Audience</fullName>
+                <default>false</default>
+                <label>No Audience</label>
+            </value>
+            <value>
+                <fullName>Prospective Student</fullName>
+                <default>false</default>
+                <label>Prospective Student</label>
+            </value>
+            <value>
+                <fullName>General Public</fullName>
+                <default>false</default>
+                <label>General Public</label>
+            </value>
+            <value>
+                <fullName>Current Students</fullName>
+                <default>false</default>
+                <label>Current Students</label>
+            </value>
+            <value>
+                <fullName>Faculty/Staff</fullName>
+                <default>false</default>
+                <label>Faculty/Staff</label>
+            </value>
+        </valueSetDefinition>
+    </valueSet>
+    <visibleLines>4</visibleLines>
+</CustomField>

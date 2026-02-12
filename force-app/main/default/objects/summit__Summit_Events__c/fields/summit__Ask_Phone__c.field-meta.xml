@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>summit__Ask_Phone__c</fullName>
+    <deprecated>false</deprecated>
+    <description>Ask the registrant for their phone number on the registration page.</description>
+    <inlineHelpText>Ask the registrant for their phone number on the registration page.</inlineHelpText>
+    <label>Ask Phone</label>
+    <required>false</required>
+    <trackHistory>false</trackHistory>
+    <trackTrending>false</trackTrending>
+    <type>Picklist</type>
+    <valueSet>
+        <restricted>true</restricted>
+        <valueSetDefinition>
+            <sorted>false</sorted>
+            <value>
+                <fullName>Do not ask</fullName>
+                <default>true</default>
+                <label>Do not ask</label>
+            </value>
+            <value>
+                <fullName>Ask with type</fullName>
+                <default>false</default>
+                <label>Ask with type</label>
+            </value>
+            <value>
+                <fullName>Ask with type require</fullName>
+                <default>false</default>
+                <label>Ask with type require</label>
+            </value>
+            <value>
+                <fullName>Ask home and mobile</fullName>
+                <default>false</default>
+                <label>Ask home and mobile</label>
+            </value>
+            <value>
+                <fullName>Ask home and mobile require one</fullName>
+                <default>false</default>
+                <label>Ask home and mobile require one</label>
+            </value>
+            <value>
+                <fullName>Ask home and mobile require both</fullName>
+                <default>false</default>
+                <label>Ask home and mobile require both</label>
+            </value>
+            <value>
+                <fullName>Ask mobile</fullName>
+                <default>false</default>
+                <label>Ask mobile</label>
+            </value>
+            <value>
+                <fullName>Ask mobile and require</fullName>
+                <default>false</default>
+                <label>Ask mobile and require</label>
+            </value>
+        </valueSetDefinition>
+    </valueSet>
+</CustomField>

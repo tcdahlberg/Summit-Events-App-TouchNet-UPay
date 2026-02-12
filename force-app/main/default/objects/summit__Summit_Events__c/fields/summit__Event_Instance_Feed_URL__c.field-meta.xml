@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>summit__Event_Instance_Feed_URL__c</fullName>
+    <deprecated>false</deprecated>
+    <externalId>false</externalId>
+    <formula>IF( $Setup.summit__Summit_Events_Settings__c.summit__Managed_Package__c,
+
+summit__Community_Base_URL__c + &apos;services/apexrest/summit/summiteventsfeed?eventId=&apos; + Id + &apos;&amp;feedType=eventList&amp;viewStart=&apos; +
+            TEXT(YEAR( summit__Start_Date__c))
+            + &apos;-&apos; + TEXT(MONTH( summit__Start_Date__c))
+            + &apos;-&apos; + TEXT(DAY(summit__Start_Date__c))+ &apos;+00:00:00&apos; +
+            &apos;&amp;viewEnd=&apos; +
+            TEXT(YEAR( summit__End_Date__c))
+            + &apos;-&apos; + TEXT(MONTH( summit__End_Date__c))
+            + &apos;-&apos; + TEXT(DAY(summit__End_Date__c)) + &apos;+24:59:59&apos;, 
+
+summit__Community_Base_URL__c + &apos;services/apexrest/summiteventsfeed?eventId=&apos; + Id + &apos;&amp;feedType=eventList&amp;viewStart=&apos; +
+            TEXT(YEAR( summit__Start_Date__c))
+            + &apos;-&apos; + TEXT(MONTH( summit__Start_Date__c))
+            + &apos;-&apos; + TEXT(DAY(summit__Start_Date__c))+ &apos;+00:00:00&apos; +
+            &apos;&amp;viewEnd=&apos; +
+            TEXT(YEAR( summit__End_Date__c))
+            + &apos;-&apos; + TEXT(MONTH( summit__End_Date__c))
+            + &apos;-&apos; + TEXT(DAY(summit__End_Date__c)) + &apos;+24:59:59&apos;
+)</formula>
+    <formulaTreatBlanksAs>BlankAsZero</formulaTreatBlanksAs>
+    <label>Event Instance Feed URL</label>
+    <required>false</required>
+    <trackHistory>false</trackHistory>
+    <trackTrending>false</trackTrending>
+    <type>Text</type>
+    <unique>false</unique>
+</CustomField>

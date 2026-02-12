@@ -1,0 +1,142 @@
+<apex:page controller="UPayPaymentController"
+           showHeader="false"
+           sidebar="false"
+           standardStylesheets="false"
+           docType="html-5.0">
+
+    <html xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>{!eventPage.summit__Event_Name__c} - Payment</title>
+
+        <!-- Salesforce Lightning Design System -->
+        <apex:slds />
+
+        <style>
+            body {
+                font-family: "Salesforce Sans", Arial, sans-serif;
+                background-color: #f3f3f3;
+                margin: 0;
+                padding: 20px;
+            }
+            .payment-container {
+                max-width: 600px;
+                margin: 0 auto;
+                background: white;
+                border-radius: 8px;
+                padding: 30px;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            }
+            .btn-container {
+                text-align: center;
+                margin-top: 30px;
+            }
+            .loading {
+                text-align: center;
+                margin-top: 20px;
+            }
+        </style>
+    </head>
+
+    <body>
+        <div class="payment-container">
+            <apex:outputPanel rendered="{!hasError}">
+                <div class="slds-notify slds-notify_alert slds-alert_error" role="alert">
+                    <span class="slds-assistive-text">Error</span>
+                    <h2>{!errorMessage}</h2>
+                </div>
+                <div class="btn-container">
+                    <a href="{!communityURL}" class="slds-button slds-button_neutral">
+                        Return to Events
+                    </a>
+                </div>
+            </apex:outputPanel>
+
+            <apex:outputPanel rendered="{!!hasError}">
+                <!-- Hidden form that will be submitted to TouchNet -->
+                <div id="paymentFormContainer"></div>
+
+                <div id="loadingIndicator" class="loading" style="display: block;">
+                    <div class="slds-spinner_container">
+                        <div role="status" class="slds-spinner slds-spinner_medium">
+                            <span class="slds-assistive-text">Loading</span>
+                            <div class="slds-spinner__dot-a"></div>
+                            <div class="slds-spinner__dot-b"></div>
+                        </div>
+                    </div>
+                    <p class="slds-m-top_small">Redirecting to payment gateway...</p>
+                </div>
+            </apex:outputPanel>
+        </div>
+
+        <script>
+            // Payment parameters from controller
+            var paymentParams = {!paymentParamsJSON};
+            var gatewayURL = '{!JSENCODE(gatewayURL)}';
+            var hasError = {!hasError};
+
+            // Build payment form dynamically
+            function buildPaymentForm() {
+                var form = document.createElement('form');
+                form.setAttribute('method', 'POST');
+                form.setAttribute('action', gatewayURL);
+                form.setAttribute('id', 'touchnetPaymentForm');
+
+                // Add all parameters as hidden fields
+                for (var key in paymentParams) {
+                    if (paymentParams.hasOwnProperty(key)) {
+                        var input = document.createElement('input');
+                        input.type = 'hidden';
+                        input.name = key;
+                        input.value = paymentParams[key];
+                        form.appendChild(input);
+                    }
+                }
+
+                // Add form to container
+                document.getElementById('paymentFormContainer').appendChild(form);
+            }
+
+            // Submit payment form
+            function submitPayment() {
+                // Track inactive timestamp for session validation
+                localStorage.setItem('paymentTimestamp', new Date().getTime());
+
+                // Submit form
+                document.getElementById('touchnetPaymentForm').submit();
+            }
+
+            // Initialize on page load
+            document.addEventListener('DOMContentLoaded', function() {
+                // Only build and submit form if no error
+                if (!hasError) {
+                    buildPaymentForm();
+                    // Auto-submit after a brief delay to ensure DOM is ready
+                    setTimeout(function() {
+                        submitPayment();
+                    }, 100);
+                }
+            });
+
+            // Session validation on page visibility change
+            document.addEventListener('visibilitychange', function() {
+                if (document.visibilityState === 'visible') {
+                    let paymentTimestamp = localStorage.getItem('paymentTimestamp');
+                    if (paymentTimestamp) {
+                        let currentTime = new Date().getTime();
+                        let minutesInactive = (currentTime - paymentTimestamp) / (1000 * 60);
+
+                        // If inactive for more than 60 minutes, reload page
+                        if (minutesInactive >= 60) {
+                            alert('Your payment session has expired. Please try again.');
+                            window.location.reload();
+                        }
+                    }
+                }
+            });
+        </script>
+    </body>
+    </html>
+</apex:page>
+

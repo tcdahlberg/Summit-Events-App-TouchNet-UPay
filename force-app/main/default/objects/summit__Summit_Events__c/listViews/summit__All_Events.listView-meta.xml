@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ListView xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>summit__All_Events</fullName>
+    <columns>NAME</columns>
+    <columns>OBJECT_ID</columns>
+    <columns>summit__Audience__c</columns>
+    <columns>summit__Start_Date__c</columns>
+    <columns>summit__End_Date__c</columns>
+    <columns>summit__Event_Name__c</columns>
+    <columns>summit__Event_Status__c</columns>
+    <columns>CREATED_DATE</columns>
+    <filterScope>Everything</filterScope>
+    <filters>
+        <field>OBJECT_ID</field>
+        <operation>notEqual</operation>
+    </filters>
+    <label>All Events</label>
+    <language>en_US</language>
+</ListView>
