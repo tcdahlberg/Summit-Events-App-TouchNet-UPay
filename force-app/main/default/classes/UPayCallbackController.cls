@@ -30,7 +30,6 @@ public without sharing class UPayCallbackController {
             String regIdParam = params.get('regId');
             String upaySiteId = params.get('UPAY_SITE_ID');
 
-            System.debug('Callback parameters: type=' + callbackType + ', regId=' + regIdParam + ', UPAY_SITE_ID=' + upaySiteId);
 
             // Validate callback type
             if (String.isBlank(callbackType)) {
@@ -77,7 +76,6 @@ public without sharing class UPayCallbackController {
         if (String.isBlank(registrationId)) {
             if (eventInfo != null && String.isNotBlank(eventInfo.registrationId)) {
                 registrationId = eventInfo.registrationId;
-                System.debug('Using registration ID from cookie: ' + registrationId);
             } else {
                 return redirectWithError('Registration context not found. Please return to the event and try again.');
             }
@@ -86,14 +84,9 @@ public without sharing class UPayCallbackController {
         // Verify registration ID matches cookie (if cookie available)
         if (eventInfo != null && String.isNotBlank(eventInfo.registrationId) &&
             eventInfo.registrationId != registrationId) {
-            System.debug('WARNING: Registration ID mismatch. URL: ' + registrationId + ', Cookie: ' + eventInfo.registrationId);
             // Continue with URL parameter (it's more reliable)
         }
 
-        // Optional: Log UPAY_SITE_ID for verification purposes
-        if (String.isNotBlank(upaySiteId)) {
-            System.debug('UPAY_SITE_ID from callback: ' + upaySiteId);
-        }
 
         // Verify payment was created by REST endpoint
         PaymentVerification verification = verifyPayment(registrationId);
@@ -102,7 +95,6 @@ public without sharing class UPayCallbackController {
         }
 
         // Success! Redirect to confirmation page
-        System.debug('Payment verified successfully for registration: ' + registrationId);
         PageReference confirmPage = new PageReference(UPayHelper.getSeaCommunityURL() + 'summit__SummitEventsConfirmation');
         confirmPage.setRedirect(true);
         return confirmPage;
@@ -130,13 +122,10 @@ public without sharing class UPayCallbackController {
             if (payments.isEmpty()) {
                 result.success = false;
                 result.errorMessage = 'Payment record not found. The payment may still be processing. Please contact support if this issue persists.';
-                System.debug('ERROR: No payment record found for registration: ' + registrationId);
                 return result;
             }
 
             summit__Summit_Events_Payment__c payment = payments[0];
-            System.debug('Found payment: Id=' + payment.Id + ', Amount=' + payment.summit__Payment_Amount__c +
-                        ', Transaction=' + payment.summit__TouchnetReceiptNumber__c);
 
             // Query fees to calculate expected total
             List<summit__Summit_Events_Fee__c> fees = [
@@ -153,7 +142,6 @@ public without sharing class UPayCallbackController {
                 }
             }
 
-            System.debug('Payment verification: Expected=' + expectedTotal + ', Actual=' + payment.summit__Payment_Amount__c);
 
             // Verify amount matches (allow small rounding differences)
             if (payment.summit__Payment_Amount__c == null ||
@@ -162,7 +150,6 @@ public without sharing class UPayCallbackController {
                 result.errorMessage = 'Payment amount mismatch. Expected: $' + expectedTotal.setScale(2) +
                                     ', Received: $' + (payment.summit__Payment_Amount__c != null ? payment.summit__Payment_Amount__c.setScale(2) : 0) +
                                     '. Please contact support.';
-                System.debug('ERROR: Payment amount mismatch for registration: ' + registrationId);
                 return result;
             }
 
@@ -183,7 +170,6 @@ public without sharing class UPayCallbackController {
      * @return PageReference to submit page with error
      */
     private static PageReference redirectWithError(String errorMsg) {
-        System.debug('Redirecting with error: ' + errorMsg);
         String encodedError = EncodingUtil.urlEncode(errorMsg, 'UTF-8');
         PageReference submitPage = new PageReference(UPayHelper.getSeaCommunityURL() +
                                                      'summit__SummitEventsSubmit?error=' + encodedError);

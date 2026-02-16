@@ -82,7 +82,6 @@ public without sharing class UPayPaymentController {
             if (String.isBlank(uPaySiteName)) {
                 // Default to Event_Registration if not specified
                 uPaySiteName = 'Event_Registration';
-                System.debug('No UPay site specified, using default: ' + uPaySiteName);
             }
 
             // Load UPay site configuration

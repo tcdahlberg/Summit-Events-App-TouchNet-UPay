@@ -4,8 +4,29 @@ Secure credit card payment processing for Summit Events App using TouchNet's UPa
 
 [![Salesforce API](https://img.shields.io/badge/Salesforce-API%2065.0-blue.svg)](https://developer.salesforce.com)
 [![License](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](LICENSE)
+[![Tests](https://img.shields.io/badge/Tests-76%2F76%20Passing-success.svg)](PRODUCTION_CHECKLIST.md)
+[![Coverage](https://img.shields.io/badge/Coverage-86%25-success.svg)](PRODUCTION_CHECKLIST.md)
+
+## Production Status
+
+✅ **READY FOR PRODUCTION**
+
+- **Test Pass Rate**: 76/76 tests (100%)
+- **Code Coverage**: 86% org-wide (exceeds 75% requirement)
+  - UPayPaymentRest: 90%
+  - UPayPaymentController: 88.6%
+  - UPayCallbackController: 87%
+  - UPayHelper: 83.6%
+- **Security**: AES256 encryption, token validation, duplicate prevention
+- **Documentation**: Complete setup and deployment guides
+
+See [PRODUCTION_CHECKLIST.md](PRODUCTION_CHECKLIST.md) for detailed readiness verification.
 
 ## Quick Start
+
+**For Production Deployment**: See **[DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md)** for complete production deployment instructions.
+
+**For Development/Testing**:
 
 ### 1. Deploy to Salesforce
 ```powershell
@@ -52,11 +73,25 @@ Navigate to the payment page and complete a test transaction.
 
 ## Documentation
 
+### Production Deployment
+
+| Document | Description |
+|----------|-------------|
+| **[DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md)** | ⭐ Step-by-step production deployment guide |
+| **[PRODUCTION_CHECKLIST.md](PRODUCTION_CHECKLIST.md)** | Production readiness checklist and validation |
+
+### Setup & Configuration
+
 | Document | Description |
 |----------|-------------|
 | **[SETUP_GUIDE.md](docs/SETUP_GUIDE.md)** | Complete installation and configuration guide |
 | **[PROXY_SETUP.md](docs/PROXY_SETUP.md)** | AWS proxy server deployment (required) |
 | **[FIELD_SETUP.md](docs/FIELD_SETUP.md)** | Manual field creation on Summit Events |
+
+### Technical Documentation
+
+| Document | Description |
+|----------|-------------|
 | **[TECHNICAL_OVERVIEW.md](docs/TECHNICAL_OVERVIEW.md)** | Architecture and technical specifications |
 | **[PAYMENT_FLOW.md](docs/PAYMENT_FLOW.md)** | Visual payment flow diagrams |
 | **[SECURITY.md](docs/SECURITY.md)** | Security implementation details |

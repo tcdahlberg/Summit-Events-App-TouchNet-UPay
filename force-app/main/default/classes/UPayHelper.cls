@@ -175,19 +175,17 @@ public without sharing class UPayHelper {
      */
     public static SecurityToken validateSecurityToken(String encryptedToken) {
         if (String.isBlank(encryptedToken)) {
-            System.debug('No security token provided');
             return null;
         }
 
         String decrypted = decryptString(encryptedToken, true);
         if (String.isBlank(decrypted)) {
-            System.debug('Failed to decrypt security token');
             return null;
         }
 
         try {
             SecurityToken token = (SecurityToken) JSON.deserialize(decrypted, SecurityToken.class);
-            System.debug('Decrypted security token: ' + JSON.serializePretty(token));
+
             // Validate timestamp is within acceptable range (e.g., 24 hours)
             Long tokenTime = Long.valueOf(token.timestamp);
             Long currentTime = Datetime.now().getTime();
@@ -195,13 +193,11 @@ public without sharing class UPayHelper {
             Long maxAge = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
 
             if (timeDiff > maxAge || timeDiff < 0) {
-                System.debug('Security token expired or invalid timestamp');
                 return null;
             }
 
             //Check if registrationId and eventId are present in salesforce and match the token values
             if (String.isBlank(token.registrationId) || String.isBlank(token.eventId)) {
-                System.debug('Security token missing registrationId or eventId');
                 return null;
             } else {
                 //Make sure the registration exists
@@ -212,7 +208,6 @@ public without sharing class UPayHelper {
                     LIMIT 1
                 ];
                 if (registrations.isEmpty()) {
-                    System.debug('No matching registration found for token values');
                     return null;
                 }
             }
@@ -263,7 +258,6 @@ public without sharing class UPayHelper {
 
         String key = getEncryptionKey();
         if (String.isBlank(key)) {
-            System.debug('Encryption key not configured');
             return '';
         }
 
