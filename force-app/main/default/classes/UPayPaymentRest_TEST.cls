@@ -300,5 +300,339 @@ private class UPayPaymentRest_TEST {
         System.assertEquals('55102', payment.summit__Zip__c);
         System.assertEquals('555-123-4567', payment.summit__Phone__c);
     }
-}
 
+    @IsTest
+    static void testProcessPayment_JSONFormat() {
+        summit__Summit_Events_Registration__c reg = [SELECT Id FROM summit__Summit_Events_Registration__c LIMIT 1];
+        summit__Summit_Events__c evt = [SELECT Id FROM summit__Summit_Events__c LIMIT 1];
+
+        // Create security token
+        String seaSecureToken = UPayHelper.createSecurityToken(reg.Id, evt.Id, 200.00);
+
+        // Build JSON request (from proxy server)
+        Map<String, String> jsonData = new Map<String, String>{
+            'pmt_status' => 'success',
+            'tpg_trans_id' => 'JSON_TEST_456',
+            'pmt_amt' => '200.00',
+            'pmt_date' => '02/15/2026',
+            'SEA_SECURE' => seaSecureToken,
+            'card_type' => 'Amex',
+            'name_on_acct' => 'JSON User',
+            'acct_addr1' => '789 JSON Blvd',
+            'acct_city' => 'Testville',
+            'acct_state' => 'TX',
+            'acct_zip' => '75001',
+            'acct_country' => 'US'
+        };
+
+        String requestBody = JSON.serialize(jsonData);
+
+        RestRequest req = new RestRequest();
+        req.requestURI = '/services/apexrest/upaypaymentreceive';
+        req.httpMethod = 'POST';
+        req.requestBody = Blob.valueOf(requestBody);
+        req.addHeader('Content-Type', 'application/json');
+
+        RestResponse res = new RestResponse();
+        RestContext.request = req;
+        RestContext.response = res;
+
+        Test.startTest();
+        String result = UPayPaymentRest.receivePayment();
+        Test.stopTest();
+
+        System.assertEquals('HTTP_OK', result, 'Should return HTTP_OK for JSON');
+
+        // Verify payment was created from JSON
+        summit__Summit_Events_Payment__c payment = [
+            SELECT Id, summit__TouchnetReceiptNumber__c, summit__Payment_Amount__c,
+                   summit__Card_Type__c
+            FROM summit__Summit_Events_Payment__c
+            WHERE summit__TouchnetReceiptNumber__c = 'JSON_TEST_456'
+            LIMIT 1
+        ];
+
+        System.assertEquals(200.00, payment.summit__Payment_Amount__c);
+        System.assertEquals('Amex', payment.summit__Card_Type__c);
+    }
+
+    @IsTest
+    static void testProcessPayment_URLParameters() {
+        summit__Summit_Events_Registration__c reg = [SELECT Id FROM summit__Summit_Events_Registration__c LIMIT 1];
+        summit__Summit_Events__c evt = [SELECT Id FROM summit__Summit_Events__c LIMIT 1];
+
+        // Create security token
+        String seaSecureToken = UPayHelper.createSecurityToken(reg.Id, evt.Id, 75.00);
+
+        // Build request with URL parameters instead of body
+        RestRequest req = new RestRequest();
+        req.requestURI = '/services/apexrest/upaypaymentreceive';
+        req.httpMethod = 'POST';
+        req.requestBody = Blob.valueOf(''); // Empty body
+        req.addHeader('Content-Type', 'application/x-www-form-urlencoded');
+
+        // Add URL parameters
+        req.addParameter('pmt_status', 'success');
+        req.addParameter('tpg_trans_id', 'URL_PARAM_789');
+        req.addParameter('pmt_amt', '75.00');
+        req.addParameter('SEA_SECURE', seaSecureToken);
+        req.addParameter('card_type', 'Discover');
+
+        RestResponse res = new RestResponse();
+        RestContext.request = req;
+        RestContext.response = res;
+
+        Test.startTest();
+        String result = UPayPaymentRest.receivePayment();
+        Test.stopTest();
+
+        System.assertEquals('HTTP_OK', result, 'Should return HTTP_OK for URL params');
+
+        // Verify payment was created
+        summit__Summit_Events_Payment__c payment = [
+            SELECT Id, summit__Payment_Amount__c, summit__Card_Type__c
+            FROM summit__Summit_Events_Payment__c
+            WHERE summit__TouchnetReceiptNumber__c = 'URL_PARAM_789'
+            LIMIT 1
+        ];
+
+        System.assertEquals(75.00, payment.summit__Payment_Amount__c);
+        System.assertEquals('Discover', payment.summit__Card_Type__c);
+    }
+
+    @IsTest
+    static void testProcessPayment_FailedStatus() {
+        summit__Summit_Events_Registration__c reg = [SELECT Id FROM summit__Summit_Events_Registration__c LIMIT 1];
+        summit__Summit_Events__c evt = [SELECT Id FROM summit__Summit_Events__c LIMIT 1];
+
+        String seaSecureToken = UPayHelper.createSecurityToken(reg.Id, evt.Id, 100.00);
+
+        // Build request with failed payment status
+        String requestBody = 'pmt_status=failed' +
+            '&tpg_trans_id=FAILED_001' +
+            '&pmt_amt=100.00' +
+            '&SEA_SECURE=' + EncodingUtil.urlEncode(seaSecureToken, 'UTF-8');
+
+        RestRequest req = new RestRequest();
+        req.requestURI = '/services/apexrest/upaypaymentreceive';
+        req.httpMethod = 'POST';
+        req.requestBody = Blob.valueOf(requestBody);
+        req.addHeader('Content-Type', 'application/x-www-form-urlencoded');
+
+        RestResponse res = new RestResponse();
+        RestContext.request = req;
+        RestContext.response = res;
+
+        Test.startTest();
+        String result = UPayPaymentRest.receivePayment();
+        Test.stopTest();
+
+        System.assertEquals('HTTP_ERROR', result, 'Should return HTTP_ERROR for failed payment');
+
+        // Verify no payment was created
+        List<summit__Summit_Events_Payment__c> payments = [
+            SELECT Id
+            FROM summit__Summit_Events_Payment__c
+            WHERE summit__TouchnetReceiptNumber__c = 'FAILED_001'
+        ];
+        System.assertEquals(0, payments.size(), 'No payment should be created for failed status');
+    }
+
+    @IsTest
+    static void testProcessPayment_MissingStatus() {
+        summit__Summit_Events_Registration__c reg = [SELECT Id FROM summit__Summit_Events_Registration__c LIMIT 1];
+        summit__Summit_Events__c evt = [SELECT Id FROM summit__Summit_Events__c LIMIT 1];
+
+        String seaSecureToken = UPayHelper.createSecurityToken(reg.Id, evt.Id, 100.00);
+
+        // Build request without pmt_status
+        String requestBody = 'tpg_trans_id=NO_STATUS' +
+            '&pmt_amt=100.00' +
+            '&SEA_SECURE=' + EncodingUtil.urlEncode(seaSecureToken, 'UTF-8');
+
+        RestRequest req = new RestRequest();
+        req.requestURI = '/services/apexrest/upaypaymentreceive';
+        req.httpMethod = 'POST';
+        req.requestBody = Blob.valueOf(requestBody);
+        req.addHeader('Content-Type', 'application/x-www-form-urlencoded');
+
+        RestResponse res = new RestResponse();
+        RestContext.request = req;
+        RestContext.response = res;
+
+        Test.startTest();
+        String result = UPayPaymentRest.receivePayment();
+        Test.stopTest();
+
+        System.assertEquals('HTTP_ERROR', result, 'Should return HTTP_ERROR for missing status');
+    }
+
+    @IsTest
+    static void testProcessPayment_InvalidJSON() {
+        // Build malformed JSON request
+        String requestBody = 'not valid json {]';
+
+        RestRequest req = new RestRequest();
+        req.requestURI = '/services/apexrest/upaypaymentreceive';
+        req.httpMethod = 'POST';
+        req.requestBody = Blob.valueOf(requestBody);
+        req.addHeader('Content-Type', 'application/json');
+
+        RestResponse res = new RestResponse();
+        RestContext.request = req;
+        RestContext.response = res;
+
+        Test.startTest();
+        String result = UPayPaymentRest.receivePayment();
+        Test.stopTest();
+
+        System.assertEquals('HTTP_ERROR', result, 'Should return HTTP_ERROR for invalid JSON');
+    }
+
+    @IsTest
+    static void testProcessPayment_BillingFieldFallbacks() {
+        summit__Summit_Events_Registration__c reg = [SELECT Id FROM summit__Summit_Events_Registration__c LIMIT 1];
+        summit__Summit_Events__c evt = [SELECT Id FROM summit__Summit_Events__c LIMIT 1];
+
+        String seaSecureToken = UPayHelper.createSecurityToken(reg.Id, evt.Id, 50.00);
+
+        // Build request with BILL_ prefixed fields (fallback fields)
+        String requestBody = 'pmt_status=success' +
+            '&tpg_trans_id=BILL_FALLBACK' +
+            '&pmt_amt=50.00' +
+            '&SEA_SECURE=' + EncodingUtil.urlEncode(seaSecureToken, 'UTF-8') +
+            '&BILL_NAME=Bill Fallback User' +
+            '&BILL_EMAIL_ADDRESS=billfallback@test.com' +
+            '&acct_addr=999 Fallback St';
+
+        RestRequest req = new RestRequest();
+        req.requestURI = '/services/apexrest/upaypaymentreceive';
+        req.httpMethod = 'POST';
+        req.requestBody = Blob.valueOf(requestBody);
+        req.addHeader('Content-Type', 'application/x-www-form-urlencoded');
+
+        RestResponse res = new RestResponse();
+        RestContext.request = req;
+        RestContext.response = res;
+
+        Test.startTest();
+        String result = UPayPaymentRest.receivePayment();
+        Test.stopTest();
+
+        System.assertEquals('HTTP_OK', result, 'Should return HTTP_OK');
+
+        // Verify fallback fields were used
+        summit__Summit_Events_Payment__c payment = [
+            SELECT Id, summit__Name_On_Account__c, summit__Email_Address__c,
+                   summit__Address_1__c
+            FROM summit__Summit_Events_Payment__c
+            WHERE summit__TouchnetReceiptNumber__c = 'BILL_FALLBACK'
+            LIMIT 1
+        ];
+
+        System.assertEquals('Bill Fallback User', payment.summit__Name_On_Account__c);
+        System.assertEquals('billfallback@test.com', payment.summit__Email_Address__c);
+        System.assertEquals('999 Fallback St', payment.summit__Address_1__c);
+    }
+
+    @IsTest
+    static void testProcessPayment_InvalidDecimalValue() {
+        summit__Summit_Events_Registration__c reg = [SELECT Id FROM summit__Summit_Events_Registration__c LIMIT 1];
+        summit__Summit_Events__c evt = [SELECT Id FROM summit__Summit_Events__c LIMIT 1];
+
+        String seaSecureToken = UPayHelper.createSecurityToken(reg.Id, evt.Id, 100.00);
+
+        // Build request with invalid decimal amount
+        String requestBody = 'pmt_status=success' +
+            '&tpg_trans_id=INVALID_DECIMAL' +
+            '&pmt_amt=not-a-number' +
+            '&SEA_SECURE=' + EncodingUtil.urlEncode(seaSecureToken, 'UTF-8');
+
+        RestRequest req = new RestRequest();
+        req.requestURI = '/services/apexrest/upaypaymentreceive';
+        req.httpMethod = 'POST';
+        req.requestBody = Blob.valueOf(requestBody);
+        req.addHeader('Content-Type', 'application/x-www-form-urlencoded');
+
+        RestResponse res = new RestResponse();
+        RestContext.request = req;
+        RestContext.response = res;
+
+        Test.startTest();
+        String result = UPayPaymentRest.receivePayment();
+        Test.stopTest();
+
+        // Should still succeed but amount should be 0
+        System.assertEquals('HTTP_OK', result, 'Should return HTTP_OK even with invalid decimal');
+
+        summit__Summit_Events_Payment__c payment = [
+            SELECT Id, summit__Payment_Amount__c
+            FROM summit__Summit_Events_Payment__c
+            WHERE summit__TouchnetReceiptNumber__c = 'INVALID_DECIMAL'
+            LIMIT 1
+        ];
+
+        System.assertEquals(0.0, payment.summit__Payment_Amount__c, 'Amount should default to 0 for invalid value');
+    }
+
+    @IsTest
+    static void testProcessPayment_InvalidDateValue() {
+        summit__Summit_Events_Registration__c reg = [SELECT Id FROM summit__Summit_Events_Registration__c LIMIT 1];
+        summit__Summit_Events__c evt = [SELECT Id FROM summit__Summit_Events__c LIMIT 1];
+
+        String seaSecureToken = UPayHelper.createSecurityToken(reg.Id, evt.Id, 100.00);
+
+        // Build request with invalid date
+        String requestBody = 'pmt_status=success' +
+            '&tpg_trans_id=INVALID_DATE' +
+            '&pmt_amt=100.00' +
+            '&pmt_date=not-a-date' +
+            '&SEA_SECURE=' + EncodingUtil.urlEncode(seaSecureToken, 'UTF-8');
+
+        RestRequest req = new RestRequest();
+        req.requestURI = '/services/apexrest/upaypaymentreceive';
+        req.httpMethod = 'POST';
+        req.requestBody = Blob.valueOf(requestBody);
+        req.addHeader('Content-Type', 'application/x-www-form-urlencoded');
+
+        RestResponse res = new RestResponse();
+        RestContext.request = req;
+        RestContext.response = res;
+
+        Test.startTest();
+        String result = UPayPaymentRest.receivePayment();
+        Test.stopTest();
+
+        // Should still succeed but date should be null
+        System.assertEquals('HTTP_OK', result, 'Should return HTTP_OK even with invalid date');
+
+        summit__Summit_Events_Payment__c payment = [
+            SELECT Id, summit__Payment_Received_Date__c
+            FROM summit__Summit_Events_Payment__c
+            WHERE summit__TouchnetReceiptNumber__c = 'INVALID_DATE'
+            LIMIT 1
+        ];
+
+        System.assertEquals(null, payment.summit__Payment_Received_Date__c, 'Date should be null for invalid value');
+    }
+
+    @IsTest
+    static void testProcessPayment_EmptyURLParams() {
+        // Test empty body and no URL params added
+        RestRequest req = new RestRequest();
+        req.requestURI = '/services/apexrest/upaypaymentreceive';
+        req.httpMethod = 'POST';
+        req.requestBody = Blob.valueOf('');
+        // Don't add any parameters - params will be null or empty
+
+        RestResponse res = new RestResponse();
+        RestContext.request = req;
+        RestContext.response = res;
+
+        Test.startTest();
+        String result = UPayPaymentRest.receivePayment();
+        Test.stopTest();
+
+        System.assertEquals('HTTP_ERROR', result, 'Should return HTTP_ERROR for empty params');
+    }
+}
