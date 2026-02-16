@@ -1,145 +1,17 @@
+<!--
+    Copyright 2026 Thaddaeus Dahlberg. All rights reserved.
+    Use of this source code is governed by a BSD Revised license.
+
+    TouchNet UPay payment callback page.
+    This page is called by TouchNet after payment processing.
+    The action method handles all logic and immediately redirects.
+-->
 <apex:page controller="UPayCallbackController"
            action="{!autoRedirect}"
            showHeader="false"
            sidebar="false"
-           standardStylesheets="false"
-           docType="html-5.0">
-
-    <html xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" lang="en">
-    <head>
-        <meta charset="utf-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <title>Payment {!IF(callbackType == 'success', 'Successful', IF(callbackType == 'cancel', 'Cancelled', 'Error'))}</title>
-
-        <apex:slds />
-
-        <style>
-            body {
-                font-family: "Salesforce Sans", Arial, sans-serif;
-                background-color: #f3f3f3;
-                margin: 0;
-                padding: 20px;
-            }
-            .callback-container {
-                max-width: 600px;
-                margin: 50px auto;
-                background: white;
-                border-radius: 8px;
-                padding: 40px;
-                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-                text-align: center;
-            }
-            .icon-container {
-                margin-bottom: 20px;
-            }
-            .success-icon {
-                color: #04844b;
-                font-size: 60px;
-            }
-            .error-icon {
-                color: #c23934;
-                font-size: 60px;
-            }
-            .warning-icon {
-                color: #fe9339;
-                font-size: 60px;
-            }
-            h1 {
-                font-size: 24px;
-                font-weight: 300;
-                margin: 20px 0;
-            }
-            .message {
-                margin: 20px 0;
-                font-size: 16px;
-                line-height: 1.5;
-            }
-            .redirect-info {
-                margin-top: 30px;
-                font-size: 14px;
-                color: #706e6b;
-            }
-        </style>
-    </head>
-
-    <body>
-        <div class="callback-container">
-            <!-- Success State -->
-            <apex:outputPanel rendered="{!callbackType == 'success' && !hasError}">
-                <div class="icon-container">
-                    <span class="success-icon">✓</span>
-                </div>
-                <h1>Payment Successful!</h1>
-                <div class="message">
-                    <p>{!message}</p>
-                    <apex:outputPanel rendered="{!NOT(ISBLANK(transactionId))}">
-                        <p class="slds-text-color_weak">
-                            <strong>Transaction ID:</strong> {!transactionId}
-                        </p>
-                    </apex:outputPanel>
-                </div>
-                <div class="redirect-info">
-                    <p>Redirecting to confirmation page in 3 seconds...</p>
-                    <p>
-                        <a href="{!redirectURL}" class="slds-button slds-button_brand">
-                            Continue to Confirmation
-                        </a>
-                    </p>
-                </div>
-            </apex:outputPanel>
-
-            <!-- Cancel State -->
-            <apex:outputPanel rendered="{!callbackType == 'cancel'}">
-                <div class="icon-container">
-                    <span class="warning-icon">⚠</span>
-                </div>
-                <h1>Payment Cancelled</h1>
-                <div class="message">
-                    <p>{!message}</p>
-                </div>
-                <div class="redirect-info">
-                    <p>
-                        <a href="{!redirectURL}" class="slds-button slds-button_neutral">
-                            Return to Registration
-                        </a>
-                    </p>
-                </div>
-            </apex:outputPanel>
-
-            <!-- Error State -->
-            <apex:outputPanel rendered="{!hasError || callbackType == 'error'}">
-                <div class="icon-container">
-                    <span class="error-icon">✕</span>
-                </div>
-                <h1>Payment Error</h1>
-                <div class="message">
-                    <p>{!message}</p>
-                </div>
-                <div class="redirect-info">
-                    <p>
-                        <a href="{!redirectURL}" class="slds-button slds-button_neutral">
-                            Return to Registration
-                        </a>
-                    </p>
-                    <p style="margin-top: 15px;">
-                        <a href="{!communityURL}" class="slds-button slds-button_neutral">
-                            Return to Events Home
-                        </a>
-                    </p>
-                </div>
-            </apex:outputPanel>
-        </div>
-
-        <script>
-            // Auto-redirect for successful payments
-            <apex:outputText rendered="{!callbackType == 'success' && !hasError}">
-                setTimeout(function() {
-                    window.location.href = '{!JSENCODE(redirectURL)}';
-                }, 3000);
-            </apex:outputText>
-        </script>
-    </body>
-    </html>
+           standardStylesheets="false">
+    <!-- Page redirects via action method - no UI needed -->
 </apex:page>
 
 

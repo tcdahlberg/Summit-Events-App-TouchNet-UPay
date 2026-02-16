@@ -47,7 +47,15 @@ private class UPayCallbackController_TEST {
     static void testSuccessCallback_WithPayment() {
         summit__Summit_Events_Registration__c reg = [SELECT Id FROM summit__Summit_Events_Registration__c LIMIT 1];
 
-        // Create payment record
+        // Create fee to match payment
+        summit__Summit_Events_Fee__c fee = new summit__Summit_Events_Fee__c(
+            summit__Event_Registration__c = reg.Id,
+            summit__Event_Fee__c = 100.00,
+            summit__Event_Fee_Type__c = 'Event Fee'
+        );
+        insert fee;
+
+        // Create payment record that matches fee total
         summit__Summit_Events_Payment__c payment = new summit__Summit_Events_Payment__c(
             summit__Event_Registration__c = reg.Id,
             summit__TouchnetReceiptNumber__c = 'CALLBACK123',
@@ -56,21 +64,23 @@ private class UPayCallbackController_TEST {
         );
         insert payment;
 
+        // Link fee to payment
+        fee.summit__Summit_Events_Payment__c = payment.Id;
+        update fee;
+
         PageReference pageRef = Page.UPayCallback;
         pageRef.getParameters().put('type', 'success');
         pageRef.getParameters().put('regId', reg.Id);
-        pageRef.getParameters().put('tpg_trans_id', 'CALLBACK123');
+        pageRef.getParameters().put('UPAY_SITE_ID', '6');
         Test.setCurrentPage(pageRef);
 
         Test.startTest();
         UPayCallbackController controller = new UPayCallbackController();
+        PageReference result = controller.autoRedirect();
         Test.stopTest();
 
-        System.assertEquals('success', controller.callbackType, 'Callback type should be success');
-        System.assertEquals(false, controller.hasError, 'Should not have error');
-        System.assertEquals(true, controller.paymentCreated, 'Payment should be found');
-        System.assertNotEquals(null, controller.message, 'Success message should be set');
-        System.assertNotEquals(null, controller.redirectURL, 'Redirect URL should be set');
+        System.assertNotEquals(null, result, 'Should return redirect');
+        System.assert(result.getUrl().contains('SummitEventsConfirmation'), 'Should redirect to confirmation page');
     }
 
     @IsTest
@@ -84,11 +94,49 @@ private class UPayCallbackController_TEST {
 
         Test.startTest();
         UPayCallbackController controller = new UPayCallbackController();
+        PageReference result = controller.autoRedirect();
         Test.stopTest();
 
-        System.assertEquals('success', controller.callbackType, 'Callback type should be success');
-        // Payment not found scenario - should show error or processing message
-        System.assertNotEquals(null, controller.message, 'Message should be set');
+        System.assertNotEquals(null, result, 'Should return redirect');
+        System.assert(result.getUrl().contains('SummitEventsSubmit'), 'Should redirect to submit page with error');
+        System.assert(result.getUrl().contains('error='), 'Should have error parameter');
+    }
+
+    @IsTest
+    static void testSuccessCallback_AmountMismatch() {
+        summit__Summit_Events_Registration__c reg = [SELECT Id FROM summit__Summit_Events_Registration__c LIMIT 1];
+
+        // Create fee for $100
+        summit__Summit_Events_Fee__c fee = new summit__Summit_Events_Fee__c(
+            summit__Event_Registration__c = reg.Id,
+            summit__Event_Fee__c = 100.00,
+            summit__Event_Fee_Type__c = 'Event Fee'
+        );
+        insert fee;
+
+        // Create payment record with wrong amount
+        summit__Summit_Events_Payment__c payment = new summit__Summit_Events_Payment__c(
+            summit__Event_Registration__c = reg.Id,
+            summit__TouchnetReceiptNumber__c = 'MISMATCH123',
+            summit__Payment_Amount__c = 50.00, // Wrong amount!
+            summit__Payment_Status__c = 'Received'
+        );
+        insert payment;
+
+        PageReference pageRef = Page.UPayCallback;
+        pageRef.getParameters().put('type', 'success');
+        pageRef.getParameters().put('regId', reg.Id);
+        Test.setCurrentPage(pageRef);
+
+        Test.startTest();
+        UPayCallbackController controller = new UPayCallbackController();
+        PageReference result = controller.autoRedirect();
+        Test.stopTest();
+
+        System.assertNotEquals(null, result, 'Should return redirect');
+        System.assert(result.getUrl().contains('SummitEventsSubmit'), 'Should redirect to submit page with error');
+        System.assert(result.getUrl().contains('error='), 'Should have error parameter');
+        System.assert(result.getUrl().contains('mismatch'), 'Error should mention amount mismatch');
     }
 
     @IsTest
@@ -102,11 +150,13 @@ private class UPayCallbackController_TEST {
 
         Test.startTest();
         UPayCallbackController controller = new UPayCallbackController();
+        PageReference result = controller.autoRedirect();
         Test.stopTest();
 
-        System.assertEquals('cancel', controller.callbackType, 'Callback type should be cancel');
-        System.assertNotEquals(null, controller.message, 'Cancel message should be set');
-        System.assertNotEquals(null, controller.redirectURL, 'Redirect URL should be set');
+        System.assertNotEquals(null, result, 'Should return redirect');
+        System.assert(result.getUrl().contains('SummitEventsSubmit'), 'Should redirect to submit page');
+        System.assert(result.getUrl().contains('error='), 'Should have error parameter');
+        System.assert(result.getUrl().contains('cancel'), 'Error should mention cancellation');
     }
 
     @IsTest
@@ -116,15 +166,17 @@ private class UPayCallbackController_TEST {
         PageReference pageRef = Page.UPayCallback;
         pageRef.getParameters().put('type', 'error');
         pageRef.getParameters().put('regId', reg.Id);
+        pageRef.getParameters().put('error_msg', 'Test error message');
         Test.setCurrentPage(pageRef);
 
         Test.startTest();
         UPayCallbackController controller = new UPayCallbackController();
+        PageReference result = controller.autoRedirect();
         Test.stopTest();
 
-        System.assertEquals('error', controller.callbackType, 'Callback type should be error');
-        System.assertNotEquals(null, controller.message, 'Error message should be set');
-        System.assertNotEquals(null, controller.redirectURL, 'Redirect URL should be set');
+        System.assertNotEquals(null, result, 'Should return redirect');
+        System.assert(result.getUrl().contains('SummitEventsSubmit'), 'Should redirect to submit page');
+        System.assert(result.getUrl().contains('error='), 'Should have error parameter');
     }
 
     @IsTest
@@ -135,10 +187,12 @@ private class UPayCallbackController_TEST {
 
         Test.startTest();
         UPayCallbackController controller = new UPayCallbackController();
+        PageReference result = controller.autoRedirect();
         Test.stopTest();
 
-        System.assertEquals(true, controller.hasError, 'Should have error for missing registration');
-        System.assert(controller.message.contains('not found'), 'Error message should mention not found');
+        System.assertNotEquals(null, result, 'Should return redirect');
+        System.assert(result.getUrl().contains('error='), 'Should have error parameter');
+        System.assert(result.getUrl().contains('not+found') || result.getUrl().contains('context'), 'Error should mention context not found');
     }
 
     @IsTest
@@ -150,25 +204,25 @@ private class UPayCallbackController_TEST {
 
         Test.startTest();
         UPayCallbackController controller = new UPayCallbackController();
+        PageReference result = controller.autoRedirect();
         Test.stopTest();
 
-        System.assertEquals(true, controller.hasError, 'Should have error for invalid registration');
+        System.assertNotEquals(null, result, 'Should return redirect');
+        System.assert(result.getUrl().contains('error='), 'Should have error parameter');
     }
 
     @IsTest
     static void testCallback_WithCookie() {
         summit__Summit_Events_Registration__c reg = [SELECT Id FROM summit__Summit_Events_Registration__c LIMIT 1];
         summit__Summit_Events__c evt = [SELECT Id FROM summit__Summit_Events__c LIMIT 1];
-        summit__Summit_Events_Instance__c instance = [SELECT Id FROM summit__Summit_Events_Instance__c LIMIT 1];
 
-        // Set encrypted cookie
-        UPayHelper.SummitEventsInfo eventInfo = new UPayHelper.SummitEventsInfo();
-        eventInfo.eventId = evt.Id;
-        eventInfo.instanceId = instance.Id;
-        eventInfo.registrationId = reg.Id;
-        String encryptedData = UPayHelper.encryptString(JSON.serialize(eventInfo));
-        Cookie regCookie = new Cookie('SummitEvents', encryptedData, null, -1, false);
-        ApexPages.currentPage().setCookies(new Cookie[]{regCookie});
+        // Create fee
+        summit__Summit_Events_Fee__c fee = new summit__Summit_Events_Fee__c(
+            summit__Event_Registration__c = reg.Id,
+            summit__Event_Fee__c = 50.00,
+            summit__Event_Fee_Type__c = 'Event Fee'
+        );
+        insert fee;
 
         // Create payment
         summit__Summit_Events_Payment__c payment = new summit__Summit_Events_Payment__c(
@@ -179,22 +233,34 @@ private class UPayCallbackController_TEST {
         );
         insert payment;
 
+        // Link fee to payment
+        fee.summit__Summit_Events_Payment__c = payment.Id;
+        update fee;
+
         PageReference pageRef = Page.UPayCallback;
         pageRef.getParameters().put('type', 'success');
-        // No regId parameter - should fall back to cookie
+        pageRef.getParameters().put('regId', reg.Id);
         Test.setCurrentPage(pageRef);
+
+        // Set cookie
+        UPayHelper.SummitEventsInfo eventInfo = new UPayHelper.SummitEventsInfo();
+        eventInfo.registrationId = reg.Id;
+        eventInfo.eventId = evt.Id;
+        String cookieValue = JSON.serialize(eventInfo);
+        Cookie seaCookie = new Cookie('SummitEvents', cookieValue, null, -1, false);
+        pageRef.getCookies().put('SummitEvents', seaCookie);
 
         Test.startTest();
         UPayCallbackController controller = new UPayCallbackController();
+        PageReference result = controller.autoRedirect();
         Test.stopTest();
 
-        System.assertEquals('success', controller.callbackType, 'Should process success callback');
-        System.assertEquals(false, controller.hasError, 'Should not have error when using cookie');
+        System.assertNotEquals(null, result, 'Should return redirect');
+        System.assert(result.getUrl().contains('SummitEventsConfirmation'), 'Should redirect to confirmation when payment verified');
     }
 
-
     @IsTest
-    static void testCallback_DefaultType() {
+    static void testCallback_MissingType() {
         summit__Summit_Events_Registration__c reg = [SELECT Id FROM summit__Summit_Events_Registration__c LIMIT 1];
 
         PageReference pageRef = Page.UPayCallback;
@@ -204,20 +270,37 @@ private class UPayCallbackController_TEST {
 
         Test.startTest();
         UPayCallbackController controller = new UPayCallbackController();
+        PageReference result = controller.autoRedirect();
         Test.stopTest();
 
-        System.assertEquals('success', controller.callbackType, 'Should default to success');
+        System.assertNotEquals(null, result, 'Should return redirect');
+        System.assert(result.getUrl().contains('error='), 'Should have error for missing type');
     }
 
     @IsTest
-    static void testCallback_WithTransactionId() {
+    static void testCallback_MultipleFees() {
         summit__Summit_Events_Registration__c reg = [SELECT Id FROM summit__Summit_Events_Registration__c LIMIT 1];
 
-        // Create payment
+        // Create multiple fees
+        List<summit__Summit_Events_Fee__c> fees = new List<summit__Summit_Events_Fee__c>{
+            new summit__Summit_Events_Fee__c(
+                summit__Event_Registration__c = reg.Id,
+                summit__Event_Fee__c = 50.00,
+                summit__Event_Fee_Type__c = 'Registration Fee'
+            ),
+            new summit__Summit_Events_Fee__c(
+                summit__Event_Registration__c = reg.Id,
+                summit__Event_Fee__c = 25.00,
+                summit__Event_Fee_Type__c = 'Processing Fee'
+            )
+        };
+        insert fees;
+
+        // Create payment record that matches total
         summit__Summit_Events_Payment__c payment = new summit__Summit_Events_Payment__c(
             summit__Event_Registration__c = reg.Id,
-            summit__TouchnetReceiptNumber__c = 'TRANS_ID_TEST',
-            summit__Payment_Amount__c = 75.00,
+            summit__TouchnetReceiptNumber__c = 'MULTI_FEE_123',
+            summit__Payment_Amount__c = 75.00, // Sum of fees
             summit__Payment_Status__c = 'Received'
         );
         insert payment;
@@ -225,15 +308,15 @@ private class UPayCallbackController_TEST {
         PageReference pageRef = Page.UPayCallback;
         pageRef.getParameters().put('type', 'success');
         pageRef.getParameters().put('regId', reg.Id);
-        pageRef.getParameters().put('tpg_trans_id', 'TRANS_ID_TEST');
         Test.setCurrentPage(pageRef);
 
         Test.startTest();
         UPayCallbackController controller = new UPayCallbackController();
+        PageReference result = controller.autoRedirect();
         Test.stopTest();
 
-        System.assertEquals('TRANS_ID_TEST', controller.transactionId, 'Transaction ID should be captured');
-        System.assertEquals(true, controller.paymentCreated, 'Payment should be found by transaction ID');
+        System.assertNotEquals(null, result, 'Should return redirect');
+        System.assert(result.getUrl().contains('SummitEventsConfirmation'), 'Should redirect to confirmation when total matches');
     }
 }
 

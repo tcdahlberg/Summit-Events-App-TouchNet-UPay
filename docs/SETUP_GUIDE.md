@@ -309,9 +309,78 @@ In addition to `SEA_SECURE`, configure these standard settings in your TouchNet 
    **See:** [PROXY_SETUP.md](PROXY_SETUP.md) for complete proxy deployment instructions.
 
 **Note:** Success, Cancel, and Error redirect URLs are automatically sent by Salesforce in the payment form submission and don't need to be configured in TouchNet. They are hardcoded to:
-- Success: `https://YOUR_SALESFORCE_DOMAIN/apex/UPayCallback?type=success&regId=...`
-- Cancel: `https://YOUR_SALESFORCE_DOMAIN/apex/UPayCallback?type=cancel&regId=...`
-- Error: `https://YOUR_SALESFORCE_DOMAIN/apex/UPayCallback?type=error&regId=...`
+- Success: `https://YOUR_VISUALFORCE_SITE/UPayCallback?type=success&regId=...`
+- Cancel: `https://YOUR_VISUALFORCE_SITE/UPayCallback?type=cancel&regId=...`
+- Error: `https://YOUR_VISUALFORCE_SITE/UPayCallback?type=error&regId=...`
+
+---
+
+## Troubleshooting
+
+### Issue: Redirected to Login Page After Payment
+
+**Symptoms:**
+- Payment completes successfully in TouchNet
+- Redirected to Salesforce login page instead of confirmation
+- URL shows login page with callback URL in startURL parameter
+
+**Root Cause:**
+The Community Base URL in Summit Events Settings is incorrect or the UPayCallback page is not enabled on your Visualforce Site.
+
+**Fix:**
+1. **Verify Community Base URL in Summit Events Settings:**
+   - Go to **Setup → Custom Settings → Summit Events Settings**
+   - Click **Manage** next to your user/profile
+   - Update **Community Base URL** to match your Visualforce Site URL:
+     - ✅ Correct: `https://yoursite.my.site.com/` (Visualforce Site format)
+     - ❌ Wrong: `https://yoursite.my.site.com/s/` (Experience Cloud format - not used by SEA)
+   
+2. **Verify UPayCallback page is enabled on your Visualforce Site:**
+   - Go to **Setup → Sites → [Your Site Name]**
+   - Click **Edit** or **Manage** your site
+   - Under **Site Visualforce Pages**, ensure `UPayCallback` is in the **Enabled** list
+   - If not, add it from the Available list
+   - Save
+
+3. **Verify Public Access Settings:**
+   - Go to **Setup → Sites → [Your Site Name] → Public Access Settings**
+   - Under **Enabled Visualforce Page Access**, verify `UPayCallback` is checked
+   - Under **Enabled Apex Class Access**, verify these are checked:
+     - `UPayCallbackController`
+     - `UPayHelper`
+   - Save and test again
+
+**Why This Happens:**
+Guest users on Visualforce Sites need the callback page to be explicitly enabled in the site's allowed pages list.
+
+### Issue: Payment Record Not Found After Callback
+
+**Symptoms:**
+- Callback page shows "Payment record not found"
+- Payment was successful in TouchNet
+
+**Possible Causes:**
+1. **Proxy server not configured** - TouchNet POST_LINK can't reach your REST endpoint
+2. **IP whitelist issue** - TouchNet blocked the proxy IPs
+3. **REST endpoint error** - Check Debug Logs for errors in `UPayPaymentRest`
+
+**Fix:**
+1. Check proxy server logs for incoming requests from TouchNet
+2. Verify TouchNet has whitelisted your static IPs
+3. Check Salesforce Debug Logs for REST endpoint errors
+4. Test the proxy server manually (see PROXY_SETUP.md)
+
+### Issue: "Payment site configuration not found"
+
+**Symptoms:**
+- Payment page shows configuration error
+- Custom Metadata Type record doesn't exist
+
+**Fix:**
+1. Go to **Setup → Custom Metadata Types → TouchNet UPay Site → Manage Records**
+2. Create a new record with Developer Name matching your event's `UPay_Site__c` field value
+3. Fill in all required fields (see Step 1 above)
+4. Mark as **Active**
 
 
 ## Support

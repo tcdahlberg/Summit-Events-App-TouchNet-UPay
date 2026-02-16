@@ -18,13 +18,31 @@ global with sharing class UPayPaymentRest {
     global static String receivePayment() {
         RestRequest req = RestContext.request;
 
-        if (req.requestBody.size() > 0) {
-            // Parse form-urlencoded data from TouchNet
-            String contentBody = req.requestBody.toString();
-            parameters = parseFormData(contentBody);
+        System.debug('=== UPay REST Callback Received ===');
+        System.debug('Request body size: ' + req.requestBody.size());
+        System.debug('Content-Type: ' + req.headers.get('Content-Type'));
 
-            // Debug logging (remove in production)
-            System.debug('UPay callback received: ' + JSON.serializePretty(parameters));
+        if (req.requestBody.size() > 0) {
+            String contentBody = req.requestBody.toString();
+            System.debug('Raw request body: ' + contentBody);
+
+            String contentType = req.headers.get('Content-Type');
+
+            // Parse based on content type
+            if (contentType != null && contentType.contains('application/json')) {
+                // JSON data from proxy
+                try {
+                    parameters = (Map<String, String>) JSON.deserialize(contentBody, Map<String, String>.class);
+                    System.debug('Parsed JSON parameters: ' + JSON.serializePretty(parameters));
+                } catch (Exception e) {
+                    System.debug('ERROR parsing JSON: ' + e.getMessage());
+                    return 'HTTP_ERROR';
+                }
+            } else {
+                // Form-urlencoded data
+                parameters = parseFormData(contentBody);
+                System.debug('Parsed form parameters: ' + JSON.serializePretty(parameters));
+            }
 
             // Validate payment status
             if (parameters.containsKey('pmt_status')) {
@@ -34,6 +52,9 @@ global with sharing class UPayPaymentRest {
 
                     //SEA_SECURE has to be added to TouchNet Form Parameters and is not a standard parameter, but it will be passed back in the callback for validation and to link the payment to the registration
                     String securityToken = getParameter('SEA_SECURE');
+
+                    System.debug('Security token received: ' + (String.isNotBlank(securityToken) ? 'YES' : 'NO'));
+
                     UPayHelper.SecurityToken token = UPayHelper.validateSecurityToken(securityToken);
 
                     if (token == null) {
@@ -48,7 +69,44 @@ global with sharing class UPayPaymentRest {
                         System.debug('ERROR: Failed to create payment record');
                         return 'HTTP_ERROR';
                     }
+                } else {
+                    System.debug('ERROR: Payment status is not success: ' + paymentStatus);
                 }
+            } else {
+                System.debug('ERROR: pmt_status parameter missing from request');
+            }
+        } else {
+            // Check if data was sent as URL parameters instead
+            System.debug('Request body is empty, checking URL parameters');
+            if (req.params != null && !req.params.isEmpty()) {
+                System.debug('URL parameters found: ' + JSON.serializePretty(req.params));
+                parameters = req.params;
+
+                // Try processing with URL parameters
+                if (parameters.containsKey('pmt_status')) {
+                    String paymentStatus = parameters.get('pmt_status');
+
+                    if (String.isNotBlank(paymentStatus) && paymentStatus.equalsIgnoreCase('success')) {
+                        String securityToken = getParameter('SEA_SECURE');
+                        System.debug('Security token from URL params: ' + (String.isNotBlank(securityToken) ? 'YES' : 'NO'));
+
+                        UPayHelper.SecurityToken token = UPayHelper.validateSecurityToken(securityToken);
+
+                        if (token == null) {
+                            System.debug('ERROR: Invalid security token in payment callback (URL params)');
+                            return 'HTTP_ERROR';
+                        }
+
+                        if (createPaymentRecord(token)) {
+                            return 'HTTP_OK';
+                        } else {
+                            System.debug('ERROR: Failed to create payment record (URL params)');
+                            return 'HTTP_ERROR';
+                        }
+                    }
+                }
+            } else {
+                System.debug('ERROR: No URL parameters found either');
             }
         }
 
